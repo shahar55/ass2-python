@@ -28,6 +28,7 @@ def main():
         if len(sys.argv) == 5 and id == "": # the client first connection to the server.
             s.send(b'no-id')
             data = s.recv(200)
+            id = data.decode()
             if len(data) != 128:
                 return
             s.send(b'here we send the new folder folder')
