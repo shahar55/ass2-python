@@ -3,6 +3,9 @@ import random
 import socket
 import string
 import sys
+# here we will update a folder that is in the server.
+def update(folder, changes):
+    return 'update'
 def main():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     if len(sys.argv) != 2:
@@ -32,9 +35,11 @@ def main():
             if client_address in updates_dictionary[id]: # if the user is in the server
                 client_socket.send(b'yes.' + id.encode())
                 changes = client_socket.recv(1024) # here we get the changes that the user made in the file.
+                folders_dict[id] = update(folders_dict[id], changes) # here we update the folder in the server.
                 for key in updates_dictionary[id].keys():
                     if key == client_address:
-                        client_socket.send(b'changes') # here we send the changes that are not in the user folder.
+                        client_socket.send(b'changes in user list') #here we send the changes that are not in the user folder.
+                        updates_dictionary[id][client_address] = [] # clean the list.
                     else: # here we update changes for all users of the client.
                         list = updates_dictionary[id].get(key)
                         list.append(changes.decode())
