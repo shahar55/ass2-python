@@ -5,33 +5,88 @@ import logging
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
-
-def on_created(event):
-    print("created")
-
-
-def on_deleted(event):
-    print("deleted")
+import watchdog as watchdog
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
 
 
-def on_modified(event):
-    print("modified")
+class Handler(watchdog.events.PatternMatchingEventHandler):
+    def __init__(self):
+        watchdog.events.PatternMatchingEventHandler.__init__(self,
+                                                             ignore_patterns=None,
+                                                             ignore_directories=False, case_sensitive=True)
+        self.deleteDirList = list()
+        self.deleteFileList = list()
+        self.addDirList = list()
+        self.addFileList = list()
 
+    def on_created(self, event):
+        print(f"File was created at {event.src_path}")
+        if os.path.isfile(event.src_path):
+            if event.src_path not in self.addFileList:
+                self.addFileList.append(event.src_path)
 
-def on_moved(event):
-    print("moved")
+        else:
+            if event.src_path not in self.addDirList:
+                self.addDirList.append(event.src_path)
 
+    def on_deleted(self, event):
+        print(f"File was deleted at {event.src_path}")
+        if os.path.isfile(event.src_path):
+            if event.src_path not in self.deleteFileList:
+                self.deleteFileList.append(event.src_path)
 
-def get_observer(path):
-    event_handler = FileSystemEventHandler()
-    # calling functions
-    event_handler.on_created = on_created
-    event_handler.on_deleted = on_deleted
-    event_handler.on_modified = on_modified
-    event_handler.on_moved = on_moved
-    observer = Observer()
-    observer.schedule(event_handler, path, recursive=True)
-    return observer
+        else:
+            if event.src_path not in self.deleteDirList:
+                self.deleteDirList.append(event.src_path)
+
+    def on_moved(self, event):
+        print(f"File was deleted at {event.src_path} to {event.dest_path}")
+        if os.path.isfile(event.src_path):
+            if event.src_path not in self.deleteFileList:
+                self.deleteFileList.append(event.src_path)
+                self.addFileList.append(event.dest_path)
+
+        else:
+            if event.src_path not in self.deleteDirList:
+                self.deleteDirList.append(event.src_path)
+                self.addDirList.append(event.dest_path)
+
+    def on_modified(self, event):
+        if event.src_path not in self.deleteFileList:
+            print(f"File was modified at {event.src_path}")
+            self.deleteFileList.append(event.src_path)
+            self.addFileList.append(event.src_path)
+
+    def get_add_directory_list(self):
+        return self.addDirList
+
+    def get_add_file_list(self):
+        return self.addFileList
+
+    def get_delete_file_list(self):
+        return self.deleteFileList
+
+    def get_delete_directory_list(self):
+        return self.deleteDirList
+
+    def clear_add_directory_list(self):
+        self.addDirList = list()
+
+    def clear_add_file_list(self):
+        self.addFileList = list()
+
+    def clear_delete_file_list(self):
+        self.deleteFileList = list()
+
+    def clear_delete_directory_list(self):
+        self.deleteDirList = list()
+    def clear_all_list(self):
+        self.clear_delete_directory_list()
+        self.clear_add_directory_list()
+        self.clear_add_file_list()
+        self.clear_delete_file_list()
+
 
 
 def send_path(path, sock):
@@ -120,13 +175,8 @@ def receive_dir(sock):
 
 
 if __name__ == "__main__":
-    observer = get_observer("C:\Program Files")
-    observer.start()
-    try:
-        print("Monitoring")
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        observer.stop()
-        print("Done")
-    observer.join()
+    event_handler = Handler()
+observer = watchdog.observers.Observer()
+observer.schedule(event_handler, r'C:\Users\shahar\documents', recursive=True)
+observer.start()
+observer.join()
