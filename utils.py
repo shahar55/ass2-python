@@ -172,6 +172,12 @@ def receive_dir(sock):
     os.mkdir(path)
     receive_empty_subdirs(sock)
     receive_files(sock)
+    
+    
+def fix_path(path):
+    if os.name == 'nt':
+        return path.replace('/', os.path.sep)
+    return path.replace('\\', os.path.sep)
 
 
 if __name__ == "__main__":
