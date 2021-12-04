@@ -177,7 +177,7 @@ def receive_dir(sock):
 def fix_path(path):
     if os.name == 'nt':
         return path.replace('/', os.path.sep)
-    return path.replace('\\', os.path.sep)
+    return path.replace('\', os.path.sep)
 
 
 if __name__ == "__main__":
