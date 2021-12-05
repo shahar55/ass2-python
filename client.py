@@ -3,6 +3,7 @@ import sys
 import socket
 import time
 import utils
+import os
 from watchdog.observers import Observer
 from utils import Handler
 import watchdog
@@ -50,6 +51,7 @@ def main():
                 return
             dest_path = utils.get_name_folder(path)
             utils.send_dir(path, dest_path, s)
+            utils.send_path(path)
         else:
             s.send(sys.argv[5].encode())
             data = s.recv(200)
@@ -61,7 +63,8 @@ def main():
                 utils.send_path(path, s)
                 utils.receive_dir(s)
             else:   # here that's the part of of checking changes in the folder.
-                utils.send_all(s, [deleteFileList, deleteDirList, addDirList, addFileList])
+                utils.send_all(
+                    s, [deleteFileList, deleteDirList, addDirList, addFileList])
                 # here we get the files we need to change.
                 utils.receive_all_client(s)
                 # this is the part when we change the files and save them.
@@ -81,4 +84,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

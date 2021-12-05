@@ -124,13 +124,13 @@ def send_path(path, sock):
 
 
 def receive_path(sock):
-    path = read(sock).decode('utf-8')
+    path = fix_path(read(sock).decode('utf-8'))
     return path
 
 
-def send_file(path, sock):
-    send_path(path, sock)
-    f = open(path, 'r')
+def send_file(source_path, dest_path, sock):
+    send_path(dest_path, sock)
+    f = open(source_path, 'r')
     l = f.read(1024)
     while l:
         send(sock, l.encode('utf-8'))
@@ -140,7 +140,7 @@ def send_file(path, sock):
 
 
 def receive_file(sock):
-    path = fix_path(receive_path(sock))
+    path = receive_path(sock)
     if path == "finish" or path == "end files":
         return -1
     f = open(path, 'w')
@@ -176,7 +176,8 @@ def send_empty_subdirs(source_path, dest_path, sock):
 def send_files(source_path, dest_path, sock):
     for root, dirs, files in os.walk(source_path):
         for f in files:
-            send_file(os.path.join(dest_path, f), sock)
+            send_file(os.path.join(source_path, f),
+                      os.path.join(dest_path, f), sock)
     send(sock, "end files".encode('utf-8'))
 
 
@@ -187,10 +188,10 @@ def send_dir(source_path, dest_path, sock):
 
 
 def receive_empty_subdirs(sock):
-    path = fix_path(receive_path(sock))
-    while path != "finish":
+    path = receive_path(sock)
+    while path != "end sub dirs":
         os.mkdir(path)
-        path = fix_path(receive_path(sock))
+        path = receive_path(sock)
 
 
 def receive_files(sock):
@@ -239,14 +240,14 @@ def receive_all_client(sock):
     i = 1
     while i != 5:
         if i == 1:  # remove file
-            path = fix_path(receive_path(sock))
+            path = receive_path(sock)
             if path == "finish":
                 i = i + 1
                 continue
             remove_file(path)
 
         if i == 2:  # remove directories
-            path = fix_path(receive_empty_dir(sock))
+            path = receive_empty_dir(sock)
 
             if path == "finish":
                 i = i + 1
@@ -267,18 +268,18 @@ def receive_all_client(sock):
 
 
 def receive_empty_subdirs_server(sock, id, user_address, update_client_users_dict):
-    path = fix_path(receive_path(sock))
+    path = receive_path(sock)
     while path != "finish":
         os.mkdir(path)
         for key in update_client_users_dict[id].keys():
             if key != user_address:
                 update_client_users_dict[id][key]["addDir"].append(
                     path)  # add the path to computer addDir list.
-        path = fix_path(receive_path(sock))
+        path = receive_path(sock)
 
 
 def receive_file_server(sock, id, user_address, update_client_users_dict):
-    path = fix_path(receive_path(sock))
+    path = receive_path(sock)
     if path == "finish" or path == "end files":
         return -1
     f = open(path, 'w')
@@ -303,7 +304,7 @@ def receive_all_server(sock, id, user_address, update_client_users_dict):
     i = 1
     while i != 5:
         if i == 1:  # remove file
-            path = fix_path(receive_path(sock))
+            path = receive_path(sock)
             for key in update_client_users_dict[id].keys():
                 if key != user_address:
                     update_client_users_dict[id][key]["deleteFile"].append(
@@ -315,7 +316,7 @@ def receive_all_server(sock, id, user_address, update_client_users_dict):
             remove_file(path)
 
         if i == 2:  # remove directories
-            path = fix_path(receive_empty_dir(sock))
+            path = receive_empty_dir(sock)
 
             for key in update_client_users_dict[id].keys():
                 if key != user_address:

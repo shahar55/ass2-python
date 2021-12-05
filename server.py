@@ -6,15 +6,15 @@ import sys
 import utils
 
 
-def new_client(update_folders, update_all_dict, id, address, folder_path):
+def new_client(update_folders, update_all_dict, id, address, folder_path, client_path):
     update_folders[id] = folder_path
-    update_all_dict[id] = {address: {"deleteDir": [],
-                                     "deleteFile": [], "addDir:": [], "addFile": []}}
+    update_all_dict[id] = {address: [
+        {"deleteDir": [], "deleteFile": [], "addDir:": [], "addFile": []}, client_path]}
 
 
-def clear_computer(update_all_dict, id, address):
-    update_all_dict[id][address] = {
-        "deleteDir": [], "deleteFile": [], "addDir:": [], "addFile": []}
+def clear_computer(update_all_dict, id, address, client_path):
+    update_all_dict[id][address] = [
+        {"deleteDir": [], "deleteFile": [], "addDir:": [], "addFile": []}, client_path]
 
 
 def main():
@@ -46,7 +46,9 @@ def main():
             sock.send(id.encode())
             # here we receive the folder from the client.
             path = utils.receive_dir(sock)
-            new_client(folders_dict, updates_dictionary, id, client_address, path)
+            client_path = utils.receive_path(sock).rsplit(os.path.sep, 1)[0]
+            new_client(folders_dict, updates_dictionary,
+                       id, client_address, path, client_path)
 
         # if the client have an id:
 
@@ -56,7 +58,8 @@ def main():
             if client_address in updates_dictionary[id]:
                 sock.send(b'yes.' + id.encode())
                 # here we get the changes that the user made in the file.
-                utils.receive_all_server(sock, id, client_address, updates_dictionary)
+                utils.receive_all_server(
+                    sock, id, client_address, updates_dictionary)
                 # here we send the changes that the user need to do.
                 send_changes_list = [updates_dictionary[id][client_address]["deleteFile"],
                                      updates_dictionary[id][client_address]["deleteDir"],
@@ -74,7 +77,8 @@ def main():
                 utils.send_dir(folders_dict[id], path, sock)
 
                 # set empty computer changes list
-                clear_computer(updates_dictionary, id, client_address)
+                clear_computer(updates_dictionary, id,
+                               client_address, path.rsplit(os.path.sep, 1)[0])
         sock.close()
         print('Client disconnected')
 
