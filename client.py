@@ -10,6 +10,7 @@ import watchdog
 
 def main():
     # validation of the arguments
+    emptyPath = 0
     if len(sys.argv) != 5 or len(sys.argv) != 6:
         print("Number of arguments isn't correct.")
         return
@@ -43,13 +44,12 @@ def main():
         # the client first connection to the server.
         if len(sys.argv) == 5 and id == "":
             s.send(b'no-id')
-            data = s.recv(200)
+            data = s.recv(128)
             id = data.decode()
             if len(id) != 128:
                 return
             dest_path = utils.get_name_folder(path)
             utils.send_dir(path, dest_path, s)
-            utils.send_path(path, s)
         else:
             s.send(sys.argv[5].encode())
             data = s.recv(200)
@@ -60,13 +60,11 @@ def main():
             if flag == 'no':  # if the client is exist but the computer is new.
                 utils.send_path(path, s)
                 utils.receive_dir(s)
-            else:
-                folder = "here we opening the folder if he exist in our computer."
-            # here that's the part of of checking changes in the folder.
-            s.send(b'here we send the changes that we check in the folder')
-            # here we get the files we need to change.
-            newFolder = s.recv(1024)
-            # this is the part when we change the files and save them.
+            else:   # here that's the part of of checking changes in the folder.
+                utils.send_all(s, [deleteFileList, deleteDirList, addDirList, addFileList])
+                # here we get the files we need to change.
+                utils.receive_all_client(s)
+                # this is the part when we change the files and save them.
         s.close()
         emptyPath = emptyPath + 1
         # we will play the watch dog after the directory was given to us by the server first, or if this a new client,
@@ -83,3 +81,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
