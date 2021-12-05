@@ -108,25 +108,34 @@ Actions that aim at files and folders and transfer them between the server and t
 """
 
 
+def send(sock, msg):
+    sock.send(msg)
+    sock.recv(3)
+
+
+def read(sock):
+    msg = sock.recv(1024)
+    sock.send(b'got')
+    return msg
+
+
 def send_path(path, sock):
-    sock.send(path.encode('utf-8'))
-    sock.recv(3)  # here we receive the got.
+    send(sock, path.encode('utf-8'))
 
 
 def receive_path(sock):
-    path = sock.recv(1024).decode('utf-8')
-    sock.send(b'got')
+    path = read(sock).decode('utf-8')
     return path
 
 
 def send_file(path, sock):
     send_path(path, sock)
     f = open(path, 'r')
-    l = f.read(1)
+    l = f.read(1024)
     while l:
-        sock.send(l.encode('utf-8'))
-        l = f.read(1)
-    sock.send("end".encode('utf-8'))
+        send(sock, l.encode('utf-8'))
+        l = f.read(1024)
+    send(sock, "end".encode('utf-8'))
     f.close()
 
 
@@ -135,16 +144,10 @@ def receive_file(sock):
     if path == "finish" or path == "end files":
         return -1
     f = open(path, 'w')
-    l = sock.recv(1).decode('utf-8')
-    str_check_end = ""
-    while str_check_end != "end":
-        if len(str_check_end) != 3:
-            str_check_end += l
-        else:
-            str_check_end = str_check_end.replace(str_check_end[0], '', 1)
-            str_check_end += l
-        f.write(l)
-        l = sock.recv(1).decode('utf-8')
+    l = read(sock).decode('utf-8')
+    while l != "end":
+        f.write(l.encode())
+        l = read(sock).decode('utf-8')
     f.close()
     return 0
 
@@ -167,14 +170,14 @@ def send_empty_subdirs(source_path, dest_path, sock):
     for root, dirs, files in os.walk(source_path):
         for d in dirs:
             send_path(os.path.join(dest_path, d), sock)
-    sock.send("end sub dirs".encode('utf-8'))
+    send(sock, "end sub dirs".encode('utf-8'))
 
 
 def send_files(source_path, dest_path, sock):
     for root, dirs, files in os.walk(source_path):
         for f in files:
             send_file(os.path.join(dest_path, f), sock)
-    sock.send("end files".encode('utf-8'))
+    send(sock, "end files".encode('utf-8'))
 
 
 def send_dir(source_path, dest_path, sock):
@@ -228,7 +231,7 @@ def send_all(sock, file_or_directories_lists):
             send_path(send_path, sock)
             if os.path.isfile(send_path):
                 send_file(send_path, sock)
-            send_dir(send_path, sock)
+            send_empty_dir(send_path, sock)
         sock.send(b'finish')
 
 
@@ -279,10 +282,10 @@ def receive_file_server(sock, id, user_address, update_client_users_dict):
     if path == "finish" or path == "end files":
         return -1
     f = open(path, 'w')
-    l = sock.recv(1).decode('utf-8')
+    l = read(sock).decode('utf-8')
     while l != "end":
-        f.write(l)
-        l = sock.recv(1)
+        f.write(l.encode())
+        l = read(sock).decode('utf-8')
     f.close()
     for key in update_client_users_dict[id].keys():
         if key != user_address:
