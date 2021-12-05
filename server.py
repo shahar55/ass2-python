@@ -4,8 +4,21 @@ import socket
 import string
 import sys
 # here we will update a folder that is in the server.
+
+
 def update(folder, changes):
     return 'update'
+
+
+def new_client(update_folders, update_all_dict, id, address, folder_path):
+    update_folders[id] = folder_path
+    update_all_dict[id] = {address: {"deleteDir": [], "deleteFile": [], "addDir:": [], "addFile": []}}
+
+
+def new_computer(update_all_dict, id, address):
+    update_all_dict[id][address] = {"deleteDir": [], "deleteFile": [], "addDir:": [], "addFile": []}
+
+
 def main():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     if len(sys.argv) != 2:
@@ -29,7 +42,7 @@ def main():
             folder = client_socket.recv(1024) # here we recieve the folder from te client.
             folder_copy = "copy" # copy folder.
             folders_dict[id] = folder_copy
-            updates_dictionary[id] = {client_address: []}
+            updates_dictionary[id] = {client_address: {"deleteDir": [], "deleteFile": [], "addDir:": [], "addFile": []}}
         else:
             id = data.decode()
             if client_address in updates_dictionary[id]: # if the user is in the server
@@ -44,7 +57,8 @@ def main():
                         list = updates_dictionary[id].get(key)
                         list.append(changes.decode())
                         updates_dictionary[id][key] = list
-            else: # the client is in the server but the user is not.
+            else: # the client is in the server but the user is not
+                # .
                 client_socket.send(b'no.' + id.encode())
                 client_socket.recv(1024)
                 client_socket.send(b'here we send copy of the folder for the computer')
