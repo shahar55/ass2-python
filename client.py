@@ -2,6 +2,7 @@ import socket
 import sys
 import socket
 import time
+import utils
 from watchdog.observers import Observer
 from utils import Handler
 import watchdog
@@ -29,8 +30,8 @@ def main():
 
     ipNum = sys.argv[1]
     portNum = int(sys.argv[2])
+    path = utils.fix_path(sys.argv[3])
     id = ""
-    emptyPath = 0
     event_handler = Handler()
     while True:
         deleteDirList = event_handler.get_delete_directory_list()
@@ -39,27 +40,32 @@ def main():
         addDirList = event_handler.get_add_directory_list()
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((ipNum, portNum))
-        if len(sys.argv) == 5 and id == "":  # the client first connection to the server.
+        # the client first connection to the server.
+        if len(sys.argv) == 5 and id == "":
             s.send(b'no-id')
             data = s.recv(200)
             id = data.decode()
-            if len(data) != 128:
+            if len(id) != 128:
                 return
-            s.send(b'here we send the new folder folder')
+            dest_path = utils.get_name_folder(path)
+            utils.send_dir(path, dest_path, s)
+            utils.send_path(path, s)
         else:
             s.send(sys.argv[5].encode())
             data = s.recv(200)
-            flag, id = data.decode().split('.')  # check if that is a new computer.
+            # check if that is a new computer.
+            flag, id = data.decode().split('.')
             if id != sys.argv[5]:
                 return
             if flag == 'no':  # if the client is exist but the computer is new.
-                s.send(b'give me copy of the folder')
-                folder = s.recv(1024)  # here we got a copy of the folder.
+                utils.send_path(path, s)
+                utils.receive_dir(s)
             else:
                 folder = "here we opening the folder if he exist in our computer."
             # here that's the part of of checking changes in the folder.
             s.send(b'here we send the changes that we check in the folder')
-            newFolder = s.recv(1024)  # here we get the files we need to change.
+            # here we get the files we need to change.
+            newFolder = s.recv(1024)
             # this is the part when we change the files and save them.
         s.close()
         emptyPath = emptyPath + 1
@@ -67,10 +73,11 @@ def main():
         # after we gave it to the server.
         if emptyPath == 1:
             observer = watchdog.observers.Observer()
-            observer.schedule(event_handler, r'C:\Users\shahar\documents', recursive=True)
+            observer.schedule(
+                event_handler, r'C:\Users\shahar\documents', recursive=True)
             observer.start()
             observer.join()
-        event_handler.clear_all_list() # clear all the path's lists.
+        event_handler.clear_all_list()  # clear all the path's lists.
         time.sleep(int(sys.argv[4]))
 
 

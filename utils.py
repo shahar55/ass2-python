@@ -113,7 +113,6 @@ def send_path(path, sock):
     sock.recv(3)  # here we receive the got.
 
 
-
 def receive_path(sock):
     path = sock.recv(1024).decode('utf-8')
     sock.send(b'got')
@@ -144,10 +143,8 @@ def receive_file(sock):
         else:
             str_check_end = str_check_end.replace(str_check_end[0], '', 1)
             str_check_end += l
-        l = l.encode
         f.write(l)
-        l = sock.recv(1)
-        l = l.decode('utf-8')
+        l = sock.recv(1).decode('utf-8')
     f.close()
     return 0
 
@@ -166,24 +163,24 @@ def remove_directory(path):
     os.rmdir(path)
 
 
-def send_empty_subdirs(path, sock):
-    for root, dirs, files in os.walk(path):
+def send_empty_subdirs(source_path, dest_path, sock):
+    for root, dirs, files in os.walk(source_path):
         for d in dirs:
-            send_path(os.path.join(root, d), sock)
+            send_path(os.path.join(dest_path, d), sock)
     sock.send("end sub dirs".encode('utf-8'))
 
 
-def send_files(path, sock):
-    for root, dirs, files in os.walk(path):
+def send_files(source_path, dest_path, sock):
+    for root, dirs, files in os.walk(source_path):
         for f in files:
-            send_file(os.path.join(root, f), sock)
+            send_file(os.path.join(dest_path, f), sock)
     sock.send("end files".encode('utf-8'))
 
 
-def send_dir(path, sock):
-    send_path(path, sock)
-    send_empty_subdirs(path, sock)
-    send_files(path, sock)
+def send_dir(source_path, dest_path, sock):
+    send_path(dest_path, sock)
+    send_empty_subdirs(source_path, dest_path, sock)
+    send_files(source_path, dest_path, sock)
 
 
 def receive_empty_subdirs(sock):
@@ -203,6 +200,7 @@ def receive_dir(sock):
     os.mkdir(path)
     receive_empty_subdirs(sock)
     receive_files(sock)
+    return path
 
 
 def send_empty_dir(path, sock):
@@ -218,6 +216,10 @@ def fix_path(path):
     if os.name == 'nt':
         return path.replace('/', os.path.sep)
     return path.replace('\\', os.path.sep)
+
+
+def get_name_folder(path):
+    return path.rsplit(os.path.sep, 1)[-1]
 
 
 def send_all(sock, file_or_directories_lists):
@@ -323,16 +325,19 @@ def receive_all_server(sock, id, user_address, update_client_users_dict):
             remove_directory(path)
 
         if i == 3:  # add directory
-            receive_empty_subdirs_server(sock, id, user_address, update_client_users_dict)
+            receive_empty_subdirs_server(
+                sock, id, user_address, update_client_users_dict)
             i = i + 1
         if i == 4:  # add file
-            receive_files_server(sock, id, user_address, update_client_users_dict)
+            receive_files_server(sock, id, user_address,
+                                 update_client_users_dict)
             i = i + 1
 
 
 if __name__ == "__main__":
     event_handler = Handler()
     observer = watchdog.observers.Observer()
-    observer.schedule(event_handler, r'C:\Users\shahar\documents', recursive=True)
+    observer.schedule(
+        event_handler, r'C:\Users\shahar\documents', recursive=True)
     observer.start()
     observer.join()
