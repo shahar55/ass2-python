@@ -57,7 +57,7 @@ class Handler(watchdog.events.PatternMatchingEventHandler):
                 self.add_to_list(2, event.dest_path)
 
     def on_modified(self, event):
-        if event.src_path not in self.deleteFileList:
+        if event.src_path not in self.deleteFileList and os.path.isfile(event.src_path):
             print(f"File was modified at {event.src_path}")
             self.add_to_list(1, event.src_path)
             self.add_to_list(3, event.src_path)
@@ -110,10 +110,14 @@ Actions that aim at files and folders and transfer them between the server and t
 
 def send_path(path, sock):
     sock.send(path.encode('utf-8'))
+    sock.recv(3)  # here we receive the got.
+
 
 
 def receive_path(sock):
-    return sock.recv(1024).decode('utf-8')
+    path = sock.recv(1024).decode('utf-8')
+    sock.send(b'got')
+    return path
 
 
 def send_file(path, sock):
@@ -133,9 +137,17 @@ def receive_file(sock):
         return -1
     f = open(path, 'w')
     l = sock.recv(1).decode('utf-8')
-    while l != "end":
+    str_check_end = ""
+    while str_check_end != "end":
+        if len(str_check_end) != 3:
+            str_check_end += l
+        else:
+            str_check_end = str_check_end.replace(str_check_end[0], '', 1)
+            str_check_end += l
+        l = l.encode
         f.write(l)
         l = sock.recv(1)
+        l = l.decode('utf-8')
     f.close()
     return 0
 
@@ -195,12 +207,10 @@ def receive_dir(sock):
 
 def send_empty_dir(path, sock):
     send_path(path, sock)
-    sock.recv(3)  # here we receive the got.
 
 
 def receive_empty_dir(sock):
     path = receive_path(sock)
-    sock.send(b'got')
     return path
 
 
