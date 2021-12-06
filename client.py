@@ -33,7 +33,11 @@ def main():
     ipNum = sys.argv[1]
     portNum = int(sys.argv[2])
     path = utils.fix_path(sys.argv[3])
-    id = ""
+    emptyPath = 0
+    if len(sys.argv) == 5:
+        id = ""
+    else:
+        id = sys.argv[5]
     event_handler = Handler()
     while True:
         deleteDirList = event_handler.get_delete_directory_list()
@@ -44,8 +48,8 @@ def main():
         s.connect((ipNum, portNum))
         # the client first connection to the server.
         if len(sys.argv) == 5 and id == "":
-            s.send(b'no-id')
-            data = s.recv(128)
+            utils.send(s, b'no-id')
+            data = utils.read(s)
             id = data.decode()
             if len(id) != 128:
                 return
@@ -53,18 +57,16 @@ def main():
             utils.send_dir(path, dest_path, s)
             utils.send_path(path)
         else:
-            s.send(sys.argv[5].encode())
-            data = s.recv(200)
+            utils.send(s, id.encode())
+            data = utils.read(s)
             # check if that is a new computer.
-            flag, id = data.decode().split('.')
-            if id != sys.argv[5]:
-                return
+            flag = data.decode()
             if flag == 'no':  # if the client is exist but the computer is new.
                 utils.send_path(path, s)
                 utils.receive_dir(s)
             else:   # here that's the part of of checking changes in the folder.
-                utils.send_all(
-                    s, [deleteFileList, deleteDirList, addDirList, addFileList])
+                utils.send_all_to_server(
+                    s, [deleteFileList, deleteDirList, addDirList, addFileList], path.rsplit(os.path.sep, 1)[0])
                 # here we get the files we need to change.
                 utils.receive_all_client(s)
                 # this is the part when we change the files and save them.

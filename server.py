@@ -33,7 +33,7 @@ def main():
 
     while True:
         sock, client_address = server.accept()
-        data = sock.recv(200)
+        data = utils.read(sock)
 
         # if the client does not have an id:
         # here we send an id to him and he sand as the folder, we create him, and save the path.
@@ -43,7 +43,7 @@ def main():
             for i in range(128):  # give id for new client
                 id = id + random.choice(string.digits + string.ascii_letters)
             print(id)
-            sock.send(id.encode())
+            utils.send(sock, id.encode())
             # here we receive the folder from the client.
             path = utils.receive_dir(sock)
             client_path = utils.receive_path(sock).rsplit(os.path.sep, 1)[0]
@@ -56,23 +56,25 @@ def main():
             id = data.decode()
             # if the user is in the server
             if client_address in updates_dictionary[id]:
-                sock.send(b'yes.' + id.encode())
+                utils.send(sock, b'yes.')
                 # here we get the changes that the user made in the file.
                 utils.receive_all_server(
                     sock, id, client_address, updates_dictionary)
                 # here we send the changes that the user need to do.
-                send_changes_list = [updates_dictionary[id][client_address]["deleteFile"],
-                                     updates_dictionary[id][client_address]["deleteDir"],
-                                     updates_dictionary[id][client_address]["addDir"],
-                                     updates_dictionary[id][client_address]["addFile"]]
+                send_changes_list = [updates_dictionary[id][client_address][0]["deleteFile"],
+                                     updates_dictionary[id][client_address][0]["deleteDir"],
+                                     updates_dictionary[id][client_address][0]["addDir"],
+                                     updates_dictionary[id][client_address][0]["addFile"]]
 
-                utils.send_all(sock, send_changes_list)
+                utils.send_all_to_client(
+                    sock, send_changes_list, updates_dictionary[id][client_address][1])
 
                 # clear computer changes list
-                clear_computer(updates_dictionary, id, client_address)
+                clear_computer(updates_dictionary, id, client_address,
+                               updates_dictionary[id][client_address][1])
 
             else:  # the client is in the server but the user is not.
-                sock.send(b'no.' + id.encode())
+                utils.send(sock, b'no.')
                 path = utils.receive_path(sock)
                 utils.send_dir(folders_dict[id], path, sock)
 
