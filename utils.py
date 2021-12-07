@@ -168,49 +168,54 @@ def remove_path(path):
 
 
 def send_empty_subdirs_to_server(source_path, sock):
-    for root, dirs, files in os.walk(source_path):
-        for d in dirs:
-            dest_path = root.replace(source_path.rsplit(
-                os.path.sep, 1)[0] + os.path.sep, "", 1)
-            send_path(os.path.join(dest_path, d), sock)
+    if os.path.isdir(source_path):
+        for root, dirs, files in os.walk(source_path):
+            for d in dirs:
+                dest_path = root.replace(source_path.rsplit(
+                    os.path.sep, 1)[0] + os.path.sep, "", 1)
+                send_path(os.path.join(dest_path, d), sock)
     send(sock, "end sub dirs".encode('utf-8'))
 
 
 def send_empty_subdirs_to_client(source_path, sock, absolute_path):
-    for root, dirs, files in os.walk(source_path):
-        for d in dirs:
-            relative_root = os.path.relpath(root)
-            if os.path.sep in relative_root:
-                relative_root = os.path.relpath(root).split(os.path.sep, 1)[1]
-            else:
-                relative_root = ""
-            dest_path = os.path.join(absolute_path, relative_root)
-            send_path(os.path.join(dest_path, d), sock)
+    if os.path.isdir(source_path):
+        for root, dirs, files in os.walk(source_path):
+            for d in dirs:
+                relative_root = os.path.relpath(root)
+                if os.path.sep in relative_root:
+                    relative_root = os.path.relpath(
+                        root).split(os.path.sep, 1)[1]
+                else:
+                    relative_root = ""
+                dest_path = os.path.join(absolute_path, relative_root)
+                send_path(os.path.join(dest_path, d), sock)
     send(sock, "end sub dirs".encode('utf-8'))
 
 
 def send_files_to_server(source_path, sock):
-    for root, dirs, files in os.walk(source_path):
-        for f in files:
-            dest_path = root.replace(source_path.rsplit(
-                os.path.sep, 1)[0] + os.path.sep, "", 1)
-            send_file(os.path.join(root, f),
-                      os.path.join(dest_path, f), sock)
+    if os.path.isdir(source_path):
+        for root, dirs, files in os.walk(source_path):
+            for f in files:
+                dest_path = root.replace(source_path.rsplit(
+                    os.path.sep, 1)[0] + os.path.sep, "", 1)
+                send_file(os.path.join(root, f),
+                          os.path.join(dest_path, f), sock)
     send(sock, "end files".encode('utf-8'))
 
 
 def send_files_to_client(source_path, sock, absolute_path):
-    for root, dirs, files in os.walk(source_path):
-        for f in files:
-            relative_root = os.path.relpath(root)
-            if os.path.sep in relative_root:
-                relative_root = os.path.relpath(
-                    root).split(os.path.sep, 1)[1]
-            else:
-                relative_root = ""
-            dest_path = os.path.join(absolute_path, relative_root)
-            send_file(os.path.join(root, f),
-                      os.path.join(dest_path, f), sock)
+    if os.path.isdir(source_path):
+        for root, dirs, files in os.walk(source_path):
+            for f in files:
+                relative_root = os.path.relpath(root)
+                if os.path.sep in relative_root:
+                    relative_root = os.path.relpath(
+                        root).split(os.path.sep, 1)[1]
+                else:
+                    relative_root = ""
+                dest_path = os.path.join(absolute_path, relative_root)
+                send_file(os.path.join(root, f),
+                          os.path.join(dest_path, f), sock)
     send(sock, "end files".encode('utf-8'))
 
 
@@ -245,8 +250,9 @@ def receive_dir(sock):
     return path
 
 
-def send_empty_dir(path, sock):
-    send_path(path, sock)
+def send_empty_dir(src_path, dest_path, sock):
+    if os.path.isdir(src_path):
+        send_path(dest_path, sock)
 
 
 def receive_empty_dir(sock):
@@ -270,8 +276,10 @@ def send_all_to_client(sock, file_or_directories_lists, absolute_path):
         for src_path in list:
             dest_path = os.path.join(
                 absolute_path, src_path.split(os.path.sep, 1)[1])
-            if i == 1 or i == 2 or i == 3:
+            if i == 1 or i == 2:
                 send_path(dest_path, sock)
+            if i == 3:
+                send_empty_dir(src_path, dest_path, sock)
             if i == 4:
                 send_file(src_path, dest_path, sock)
         send(sock, b'finish')
@@ -284,8 +292,10 @@ def send_all_to_server(sock, file_or_directories_lists, absolute_path, folder_na
         for src_path in list:
             dest_path = str(folder_name_server) + src_path.replace(
                 str(absolute_path), "", 1)
-            if i == 1 or i == 2 or i == 3:
+            if i == 1 or i == 2:
                 send_path(dest_path, sock)
+            if i == 3:
+                send_empty_dir(src_path, dest_path, sock)
             if i == 4:
                 send_file(src_path, dest_path, sock)
         send(sock, b'finish')
