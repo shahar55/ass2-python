@@ -24,13 +24,13 @@ class Handler(watchdog.events.PatternMatchingEventHandler):
             if event.src_path not in self.addFileList:
                 self.addFileList.append(event.src_path)
 
-        else:
+        elif os.path.isdir(event.src_path):
             if event.src_path not in self.addDirList:
                 self.addDirList.append(event.src_path)
 
     def on_deleted(self, event):
         print(f"File was deleted at {event.src_path}")
-        if os.path.isfile(event.src_path):
+        if not event.is_directory:
             if event.src_path not in self.deleteFileList:
                 self.deleteFileList.append(event.src_path)
 
@@ -40,12 +40,12 @@ class Handler(watchdog.events.PatternMatchingEventHandler):
 
     def on_moved(self, event):
         print(f"File was deleted at {event.src_path} to {event.dest_path}")
-        if os.path.isfile(event.src_path):
+        if os.path.isfile(event.dest_path):
             if event.src_path not in self.deleteFileList:
                 self.add_to_list(3, event.src_path)
                 self.add_to_list(1, event.dest_path)
 
-        else:
+        elif os.path.isdir(event.dest_path):
             if event.src_path not in self.deleteDirList:
                 self.add_to_list(4, event.src_path)
                 self.add_to_list(2, event.dest_path)
@@ -147,17 +147,23 @@ def receive_file(sock):
 
 
 def remove_file(path):
-    if os.path.exists(path):
+    if os.path.isfile(path):
         os.remove(path)
 
 
 def remove_directory(path):
-    for root, dirs, files in os.walk(path, topdown=False):
-        for f in files:
-            os.unlink(os.path.join(root, f))
-        for d in dirs:
-            os.rmdir(os.path.join(root, d))
-    os.rmdir(path)
+    if os.path.isdir(path):
+        for root, dirs, files in os.walk(path, topdown=False):
+            for f in files:
+                os.unlink(os.path.join(root, f))
+            for d in dirs:
+                os.rmdir(os.path.join(root, d))
+        os.rmdir(path)
+
+
+def remove_path(path):
+    remove_file(path)
+    remove_directory(path)
 
 
 def send_empty_subdirs_to_server(source_path, sock):
@@ -258,63 +264,52 @@ def get_name_folder(path):
 
 
 def send_all_to_client(sock, file_or_directories_lists, absolute_path):
+    i = 1
     for list in file_or_directories_lists:
         for src_path in list:
             dest_path = os.path.join(
                 absolute_path, src_path.split(os.path.sep, 1)[1])
-            type = read(sock).decode('utf-8')
-            if type == "remove file" or type == "remove dir":
+            if i == 1 or i == 2 or i == 3:
                 send_path(dest_path, sock)
-            if type == "add dir":
-                send_path(dest_path, sock)
-                send_empty_subdirs_to_client(src_path, sock, absolute_path)
-            if type == "add file":
+            if i == 4:
                 send_file(src_path, dest_path, sock)
-        sock.send(b'finish')
+        send(sock, b'finish')
+        i = i + 1
 
 
 def send_all_to_server(sock, file_or_directories_lists, absolute_path, folder_name_server):
+    i = 1
     for list in file_or_directories_lists:
-        type = read(sock).decode('utf-8')
         for src_path in list:
             dest_path = str(folder_name_server) + src_path.replace(
                 str(absolute_path), "", 1)
-            if type == "remove file" or type == "remove dir":
+            if i == 1 or i == 2 or i == 3:
                 send_path(dest_path, sock)
-            if type == "add dir":
-                send_path(dest_path, sock)
-                send_empty_subdirs_to_server(src_path, sock)
-            if type == "add file":
+            if i == 4:
                 send_file(src_path, dest_path, sock)
-        sock.send(b'finish')
+        send(sock, b'finish')
+        i = i + 1
 
 
 def receive_all_client(sock):
     i = 1
     while i != 5:
         if i == 1:  # remove file
-            send(sock, b'remove file')
             path = receive_path(sock)
             if path == "finish":
                 i = i + 1
                 continue
-            remove_file(path)
-
+            remove_path(path)
         if i == 2:  # remove directories
-            send(sock, b'remove dir')
             path = receive_empty_dir(sock)
-
             if path == "finish":
                 i = i + 1
                 continue
-            remove_directory(path)
-
+            remove_path(path)
         if i == 3:  # add directory
-            send(sock, b'add dir')
             receive_empty_subdirs(sock)
             i = i + 1
         if i == 4:  # add file
-            send(sock, b'add file')
             receive_files(sock)
             i = i + 1
 
@@ -342,7 +337,7 @@ def receive_file_server(sock, id, client_num, update_client_users_dict):
     f = open(path, 'w')
     l = read(sock).decode('utf-8')
     while l != "end":
-        f.write(l.encode())
+        f.write(l)
         l = read(sock).decode('utf-8')
     f.close()
     for key in update_client_users_dict[id].keys():
@@ -361,7 +356,6 @@ def receive_all_server(sock, id, client_num, update_client_users_dict):
     i = 1
     while i != 5:
         if i == 1:  # remove file
-            send(sock, b'remove file')
             path = receive_path(sock)
             if path == "finish":
                 i = i + 1
@@ -370,10 +364,8 @@ def receive_all_server(sock, id, client_num, update_client_users_dict):
                 if key != client_num:
                     update_client_users_dict[id][key]["deleteFile"].append(
                         path)  # add the path to computer delete files list.
-            remove_file(path)
-
+            remove_path(path)
         if i == 2:  # remove directories
-            send(sock, b'remove dir')
             path = receive_empty_dir(sock)
             if path == "finish":
                 i = i + 1
@@ -382,15 +374,12 @@ def receive_all_server(sock, id, client_num, update_client_users_dict):
                 if key != client_num:
                     update_client_users_dict[id][key]["deleteDir"].append(
                         path)  # add the path to computer delete directories list.
-            remove_directory(path)
-
+            remove_path(path)
         if i == 3:  # add directory
-            send(sock, b'add dir')
             receive_empty_subdirs_server(
                 sock, id, client_num, update_client_users_dict)
             i = i + 1
         if i == 4:  # add file
-            send(sock, b'add file')
             receive_files_server(sock, id, client_num,
                                  update_client_users_dict)
             i = i + 1

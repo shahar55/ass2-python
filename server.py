@@ -8,12 +8,12 @@ import utils
 def new_client(update_folders, update_all_dict, id, client_number, folder_path, client_path):
     update_folders[id] = folder_path
     update_all_dict[id] = {client_number: [
-        {"deleteDir": [], "deleteFile": [], "addDir:": [], "addFile": []}, client_path]}
+        {"deleteDir": [], "deleteFile": [], "addDir": [], "addFile": []}, client_path]}
 
 
 def clear_computer(update_all_dict, id, client_number, client_path):
     update_all_dict[id][client_number] = [
-        {"deleteDir": [], "deleteFile": [], "addDir:": [], "addFile": []}, client_path]
+        {"deleteDir": [], "deleteFile": [], "addDir": [], "addFile": []}, client_path]
 
 
 def main():
