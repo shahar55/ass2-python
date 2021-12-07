@@ -138,12 +138,13 @@ def receive_file(sock):
     path = receive_path(sock)
     if path == "finish" or path == "end files":
         return -1
-    f = open(path, 'w')
-    l = read(sock).decode('utf-8')
-    while l != "end":
-        f.write(l)
+    if os.path.isdir(path.rsplit(os.path.sep, 1)[0]):
+        f = open(path, 'w')
         l = read(sock).decode('utf-8')
-    f.close()
+        while l != "end":
+            f.write(l)
+            l = read(sock).decode('utf-8')
+        f.close()
     return 0
 
 
@@ -233,7 +234,8 @@ def send_dir_to_client(source_path, sock, absolute_path):
 def receive_empty_subdirs(sock):
     path = receive_path(sock)
     while path != "end sub dirs" and path != "finish":
-        os.mkdir(path)
+        if os.path.isdir(path.rsplit(os.path.sep, 1)[0]):
+            os.mkdir(path)
         path = receive_path(sock)
 
 
@@ -333,11 +335,12 @@ def receive_all_client(sock):
 def receive_empty_subdirs_server(sock, id, client_num, update_client_users_dict):
     path = receive_path(sock)
     while path != "finish":
-        os.mkdir(path)
-        for key in update_client_users_dict[id].keys():
-            if key != client_num:
-                update_client_users_dict[id][key]["addDir"].append(
-                    path)  # add the path to computer addDir list.
+        if os.path.isdir(path.rsplit(os.path.sep, 1)[0]):
+            os.mkdir(path)
+            for key in update_client_users_dict[id].keys():
+                if key != client_num:
+                    update_client_users_dict[id][key][0]["addDir"].append(
+                        path)  # add the path to computer addDir list.
         path = receive_path(sock)
 
 
@@ -345,16 +348,17 @@ def receive_file_server(sock, id, client_num, update_client_users_dict):
     path = receive_path(sock)
     if path == "finish" or path == "end files":
         return -1
-    f = open(path, 'w')
-    l = read(sock).decode('utf-8')
-    while l != "end":
-        f.write(l)
+    if os.path.isdir(path.rsplit(os.path.sep, 1)[0]):
+        f = open(path, 'w')
         l = read(sock).decode('utf-8')
-    f.close()
-    for key in update_client_users_dict[id].keys():
-        if key != client_num:
-            update_client_users_dict[id][key]["addFile"].append(
-                path)  # add the path to computer add files list.
+        while l != "end":
+            f.write(l)
+            l = read(sock).decode('utf-8')
+        f.close()
+        for key in update_client_users_dict[id].keys():
+            if key != client_num:
+                update_client_users_dict[id][key][0]["addFile"].append(
+                    path)  # add the path to computer add files list.
     return 0
 
 
@@ -373,7 +377,7 @@ def receive_all_server(sock, id, client_num, update_client_users_dict):
                 continue
             for key in update_client_users_dict[id].keys():
                 if key != client_num:
-                    update_client_users_dict[id][key]["deleteFile"].append(
+                    update_client_users_dict[id][key][0]["deleteFile"].append(
                         path)  # add the path to computer delete files list.
             remove_path(path)
         if i == 2:  # remove directories
@@ -383,7 +387,7 @@ def receive_all_server(sock, id, client_num, update_client_users_dict):
                 continue
             for key in update_client_users_dict[id].keys():
                 if key != client_num:
-                    update_client_users_dict[id][key]["deleteDir"].append(
+                    update_client_users_dict[id][key][0]["deleteDir"].append(
                         path)  # add the path to computer delete directories list.
             remove_path(path)
         if i == 3:  # add directory
