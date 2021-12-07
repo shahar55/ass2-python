@@ -1,7 +1,4 @@
-import socket
 import os
-import time
-import logging
 import watchdog as watchdog
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
@@ -143,7 +140,7 @@ def receive_file(sock):
     f = open(path, 'w')
     l = read(sock).decode('utf-8')
     while l != "end":
-        f.write(l.encode())
+        f.write(l)
         l = read(sock).decode('utf-8')
     f.close()
     return 0
@@ -163,30 +160,62 @@ def remove_directory(path):
     os.rmdir(path)
 
 
-def send_empty_subdirs(source_path, dest_path, sock):
+def send_empty_subdirs_to_server(source_path, sock):
     for root, dirs, files in os.walk(source_path):
         for d in dirs:
+            dest_path = root.replace(source_path.rsplit(
+                os.path.sep, 1)[0] + os.path.sep, "", 1)
             send_path(os.path.join(dest_path, d), sock)
     send(sock, "end sub dirs".encode('utf-8'))
 
 
-def send_files(source_path, dest_path, sock):
+def send_empty_subdirs_to_client(source_path, sock, absolute_path):
+    for root, dirs, files in os.walk(source_path):
+        for d in dirs:
+            relative_root = os.path.relpath(root)
+            if os.path.sep in relative_root:
+                relative_root = os.path.relpath(root).split(os.path.sep, 1)[1]
+            else:
+                relative_root = ""
+            dest_path = os.path.join(absolute_path, relative_root)
+            send_path(os.path.join(dest_path, d), sock)
+    send(sock, "end sub dirs".encode('utf-8'))
+
+
+def send_files_to_server(source_path, sock):
     for root, dirs, files in os.walk(source_path):
         for f in files:
-            send_file(os.path.join(source_path, f),
+            dest_path = root.replace(source_path.rsplit(
+                os.path.sep, 1)[0] + os.path.sep, "", 1)
+            send_file(os.path.join(root, f),
                       os.path.join(dest_path, f), sock)
     send(sock, "end files".encode('utf-8'))
 
 
-def send_dir(source_path, dest_path, sock):
+def send_files_to_client(source_path, sock, absolute_path):
+    for root, dirs, files in os.walk(source_path):
+        for f in files:
+            relative_root = os.path.relpath(root).split(os.path.sep, 1)[1]
+            dest_path = os.path.join(absolute_path, relative_root)
+            send_file(os.path.join(root, f),
+                      os.path.join(dest_path, f), sock)
+    send(sock, "end files".encode('utf-8'))
+
+
+def send_dir_to_server(source_path, dest_path, sock):
     send_path(dest_path, sock)
-    send_empty_subdirs(source_path, dest_path, sock)
-    send_files(source_path, dest_path, sock)
+    send_empty_subdirs_to_server(source_path, sock)
+    send_files_to_server(source_path, sock)
+
+
+def send_dir_to_client(source_path, sock, absolute_path):
+    send_empty_subdirs_to_client(source_path, sock, absolute_path)
+    send_files_to_client(source_path, sock, absolute_path)
 
 
 def receive_empty_subdirs(sock):
     path = receive_path(sock)
-    while path != "end sub dirs" or path != "finish":
+    while path != "end sub dirs" and path != "finish":
         os.mkdir(path)
         path = receive_path(sock)
 
@@ -226,29 +255,30 @@ def get_name_folder(path):
 def send_all_to_client(sock, file_or_directories_lists, absolute_path):
     for list in file_or_directories_lists:
         for src_path in list:
-            dest_path = os.path.join(absolute_path, src_path)
+            dest_path = os.path.join(
+                absolute_path, src_path.split(os.path.sep, 1)[1])
             type = read(sock).decode('utf-8')
             if type == "remove file" or type == "remove dir":
                 send_path(dest_path, sock)
             if type == "add dir":
                 send_path(dest_path, sock)
-                send_empty_subdirs(src_path, dest_path, sock)
+                send_empty_subdirs_to_client(src_path, sock, absolute_path)
             if type == "add file":
                 send_file(src_path, dest_path, sock)
         sock.send(b'finish')
 
 
-def send_all_to_server(sock, file_or_directories_lists, absolute_path):
+def send_all_to_server(sock, file_or_directories_lists, absolute_path, folder_name_server):
     for list in file_or_directories_lists:
         for src_path in list:
-            dest_path = src_path.replace(
-                str(absolute_path) + os.path.sep, "", 1)
+            dest_path = str(folder_name_server) + src_path.replace(
+                str(absolute_path), "", 1)
             type = read(sock).decode('utf-8')
             if type == "remove file" or type == "remove dir":
                 send_path(dest_path, sock)
             if type == "add dir":
                 send_path(dest_path, sock)
-                send_empty_subdirs(src_path, dest_path, sock)
+                send_empty_subdirs_to_server(src_path, sock)
             if type == "add file":
                 send_file(src_path, dest_path, sock)
         sock.send(b'finish')
@@ -368,6 +398,6 @@ if __name__ == "__main__":
     event_handler = Handler()
     observer = watchdog.observers.Observer()
     observer.schedule(
-        event_handler, r'C:\Users\shahar\documents', recursive=True)
+        event_handler, r'C:\Users\ronen\documents', recursive=True)
     observer.start()
     observer.join()

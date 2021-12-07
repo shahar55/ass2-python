@@ -1,4 +1,3 @@
-import socket
 import sys
 import socket
 import time
@@ -11,8 +10,7 @@ import watchdog
 
 def main():
     # validation of the arguments
-    emptyPath = 0
-    if len(sys.argv) != 5 or len(sys.argv) != 6:
+    if len(sys.argv) != 5 and len(sys.argv) != 6:
         print("Number of arguments isn't correct.")
         return
     if int(sys.argv[2]) > 65535 or int(sys.argv[2]) < 1:
@@ -54,33 +52,34 @@ def main():
             if len(id) != 128:
                 return
             dest_path = utils.get_name_folder(path)
-            utils.send_dir(path, dest_path, s)
-            utils.send_path(path)
+            utils.send_dir_to_server(path, dest_path, s)
+            utils.send_path(path, s)
         else:
             utils.send(s, id.encode())
             data = utils.read(s)
             # check if that is a new computer.
             flag = data.decode()
-            if flag == 'no':  # if the client is exist but the computer is new.
+            if flag == 'no.':  # if the client is exist but the computer is new.
+                os.mkdir(path)
                 utils.send_path(path, s)
                 utils.receive_dir(s)
-            else:   # here that's the part of of checking changes in the folder.
+            else:  # here that's the part of checking changes in the folder.
                 utils.send_all_to_server(
-                    s, [deleteFileList, deleteDirList, addDirList, addFileList], path.rsplit(os.path.sep, 1)[0])
+                    s, [deleteFileList, deleteDirList, addDirList, addFileList], path, flag)
                 # here we get the files we need to change.
                 utils.receive_all_client(s)
                 # this is the part when we change the files and save them.
         s.close()
+        event_handler.clear_all_list()  # clear all the path's lists.
         emptyPath = emptyPath + 1
         # we will play the watch dog after the directory was given to us by the server first, or if this a new client,
         # after we gave it to the server.
         if emptyPath == 1:
             observer = watchdog.observers.Observer()
             observer.schedule(
-                event_handler, r'C:\Users\shahar\documents', recursive=True)
+                event_handler, path, recursive=True)
             observer.start()
             observer.join()
-        event_handler.clear_all_list()  # clear all the path's lists.
         time.sleep(int(sys.argv[4]))
 
 

@@ -20,11 +20,12 @@ def clear_computer(update_all_dict, id, address, client_path):
 def main():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     if len(sys.argv) != 2:
+        print("Number of arguments is invalid.")
         return
     if int(sys.argv[1]) > 65535 or int(sys.argv[1]) < 1:
         print("Port number isn't valid.")
         return
-    server.bind(('', sys.argv[1]))
+    server.bind(('', int(sys.argv[1])))
     server.listen()
     folders_dict = dict()  # here we save the recent folder of each id.
 
@@ -46,7 +47,7 @@ def main():
             utils.send(sock, id.encode())
             # here we receive the folder from the client.
             path = utils.receive_dir(sock)
-            client_path = utils.receive_path(sock).rsplit(os.path.sep, 1)[0]
+            client_path = utils.receive_path(sock)
             new_client(folders_dict, updates_dictionary,
                        id, client_address, path, client_path)
 
@@ -56,7 +57,7 @@ def main():
             id = data.decode()
             # if the user is in the server
             if client_address in updates_dictionary[id]:
-                utils.send(sock, b'yes.')
+                utils.send(sock, folders_dict[id])
                 # here we get the changes that the user made in the file.
                 utils.receive_all_server(
                     sock, id, client_address, updates_dictionary)
@@ -76,11 +77,11 @@ def main():
             else:  # the client is in the server but the user is not.
                 utils.send(sock, b'no.')
                 path = utils.receive_path(sock)
-                utils.send_dir(folders_dict[id], path, sock)
+                utils.send_dir_to_client(folders_dict[id], sock, path)
 
                 # set empty computer changes list
                 clear_computer(updates_dictionary, id,
-                               client_address, path.rsplit(os.path.sep, 1)[0])
+                               client_address, path)
         sock.close()
         print('Client disconnected')
 
