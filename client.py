@@ -31,7 +31,8 @@ def main():
     ipNum = sys.argv[1]
     portNum = int(sys.argv[2])
     path = utils.fix_path(sys.argv[3])
-    emptyPath = 0
+    empty_path = 0
+    client_num = 0
     if len(sys.argv) == 5:
         id = ""
     else:
@@ -46,16 +47,17 @@ def main():
         s.connect((ipNum, portNum))
         # the client first connection to the server.
         if len(sys.argv) == 5 and id == "":
-            utils.send(s, b'no-id')
+            utils.send(s, b'no_id')
+            utils.send(s, b'no_client_num')
             data = utils.read(s)
             id = data.decode()
-            if len(id) != 128:
-                return
+            client_num = 1
             dest_path = utils.get_name_folder(path)
             utils.send_dir_to_server(path, dest_path, s)
             utils.send_path(path, s)
         else:
             utils.send(s, id.encode())
+            utils.send(s, str(client_num).encode())
             data = utils.read(s)
             # check if that is a new computer.
             flag = data.decode()
@@ -63,6 +65,7 @@ def main():
                 os.mkdir(path)
                 utils.send_path(path, s)
                 utils.receive_dir(s)
+                client_num = int(utils.read(s).decode())
             else:  # here that's the part of checking changes in the folder.
                 utils.send_all_to_server(
                     s, [deleteFileList, deleteDirList, addDirList, addFileList], path, flag)
@@ -71,16 +74,16 @@ def main():
                 # this is the part when we change the files and save them.
         s.close()
         event_handler.clear_all_list()  # clear all the path's lists.
-        emptyPath = emptyPath + 1
+        empty_path = empty_path + 1
         # we will play the watch dog after the directory was given to us by the server first, or if this a new client,
         # after we gave it to the server.
-        if emptyPath == 1:
+        if empty_path == 1:
             observer = watchdog.observers.Observer()
             observer.schedule(
                 event_handler, path, recursive=True)
             observer.start()
-            observer.join()
-        time.sleep(int(sys.argv[4]))
+            # observer.join()
+        time.sleep(float(sys.argv[4]))
 
 
 if __name__ == '__main__':
