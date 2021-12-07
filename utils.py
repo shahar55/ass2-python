@@ -123,14 +123,15 @@ def receive_path(sock):
 
 
 def send_file(source_path, dest_path, sock):
-    send_path(dest_path, sock)
-    f = open(source_path, 'r')
-    l = f.read(1024)
-    while l:
-        send(sock, l.encode('utf-8'))
+    if os.path.isfile(source_path):
+        send_path(dest_path, sock)
+        f = open(source_path, 'r')
         l = f.read(1024)
-    send(sock, "end".encode('utf-8'))
-    f.close()
+        while l:
+            send(sock, l.encode('utf-8'))
+            l = f.read(1024)
+        send(sock, "end".encode('utf-8'))
+        f.close()
 
 
 def receive_file(sock):
