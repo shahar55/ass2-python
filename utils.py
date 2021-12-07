@@ -195,7 +195,12 @@ def send_files_to_server(source_path, sock):
 def send_files_to_client(source_path, sock, absolute_path):
     for root, dirs, files in os.walk(source_path):
         for f in files:
-            relative_root = os.path.relpath(root).split(os.path.sep, 1)[1]
+            relative_root = os.path.relpath(root)
+            if os.path.sep in relative_root:
+                relative_root = os.path.relpath(
+                    root).split(os.path.sep, 1)[1]
+            else:
+                relative_root = ""
             dest_path = os.path.join(absolute_path, relative_root)
             send_file(os.path.join(root, f),
                       os.path.join(dest_path, f), sock)
