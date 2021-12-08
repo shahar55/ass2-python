@@ -68,6 +68,8 @@ def main():
                 # here we get the changes that the user made in the file.
                 utils.receive_all_server(
                     sock, id, client_num, updates_dictionary)
+                updates_dictionary[id][client_num][0]["addDir"] = utils.fix_add_dir_list(
+                    updates_dictionary[id][client_num][0]["addDir"])
                 # here we send the changes that the user need to do.
                 send_changes_list = [updates_dictionary[id][client_num][0]["deleteFile"],
                                      updates_dictionary[id][client_num][0]["deleteDir"],

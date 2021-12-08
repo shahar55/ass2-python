@@ -409,10 +409,17 @@ def receive_all_server(sock, id, client_num, update_client_users_dict):
             i = i + 1
 
 
+def fix_add_dir_list(add_dir_list):
+    for i in range(len(add_dir_list)):
+        for j in range(i, len(add_dir_list)):
+            if str(add_dir_list[j]) in str(add_dir_list[i]):
+                add_dir_list[i], add_dir_list[j] = add_dir_list[j], add_dir_list[i]
+    return add_dir_list
+
+
 if __name__ == "__main__":
     event_handler = Handler()
     observer = watchdog.observers.Observer()
-    observer.schedule(
-        event_handler, r'C:\Users\ronen\documents', recursive=True)
+    observer.schedule(event_handler, r'C:\Users\ronen\documents', recursive=True)
     observer.start()
     observer.join()

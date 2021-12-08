@@ -72,6 +72,7 @@ def main():
                 utils.receive_dir(s)
                 client_num = int(utils.read(s).decode())
             else:  # here that's the part of checking changes in the folder.
+                addDirList = utils.fix_add_dir_list(addDirList)
                 utils.send_all_to_server(
                     s, [deleteFileList, deleteDirList, addDirList, addFileList], path, flag)
                 # here we get the files we need to change.
@@ -87,7 +88,6 @@ def main():
             observer.schedule(
                 event_handler, path, recursive=True)
             observer.start()
-            # observer.join()
         time.sleep(float(sys.argv[4]))
 
 
