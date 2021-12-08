@@ -57,6 +57,11 @@ def main():
         else:
             id = data
             client_num = int(data2)
+            if id not in updates_dictionary.keys():
+                utils.send(sock, b'ID is invalid')
+                sock.close()
+                continue
+            utils.send(sock, b'ID is valid')
             # if the user is in the server
             if client_num in updates_dictionary[id].keys():
                 utils.send(sock, folders_dict[id].encode())

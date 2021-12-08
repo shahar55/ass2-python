@@ -58,6 +58,11 @@ def main():
         else:
             utils.send(s, id.encode())
             utils.send(s, str(client_num).encode())
+            validation = utils.read(s).decode()
+            if validation == "ID is invalid":
+                print(validation)
+                s.close()
+                return
             data = utils.read(s)
             # check if that is a new computer.
             flag = data.decode()
