@@ -134,10 +134,12 @@ def send_file(source_path, dest_path, sock):
         f.close()
 
 
-def receive_file(sock):
+def receive_file(sock, old_path="", new_path=""):
     path = receive_path(sock)
     if path == "finish" or path == "end files":
         return -1
+    if old_path != "":
+        path = path.replace(old_path, new_path, 1)
     if os.path.isdir(path.rsplit(os.path.sep, 1)[0]):
         f = open(path, 'w')
         l = read(sock).decode('utf-8')
@@ -231,25 +233,32 @@ def send_dir_to_client(source_path, sock, absolute_path):
     send_files_to_client(source_path, sock, absolute_path)
 
 
-def receive_empty_subdirs(sock):
+def receive_empty_subdirs(sock, old_path="", new_path=""):
     path = receive_path(sock)
     while path != "end sub dirs" and path != "finish":
+        if old_path != "":
+            path = path.replace(old_path, new_path, 1)
         if os.path.isdir(path.rsplit(os.path.sep, 1)[0]):
             os.mkdir(path)
         path = receive_path(sock)
 
 
-def receive_files(sock):
-    while receive_file(sock) != -1:
+def receive_files(sock, old_path="", new_path=""):
+    while receive_file(sock, old_path, new_path) != -1:
         pass
 
 
 def receive_dir(sock):
     path = receive_path(sock)
-    os.mkdir(path)
-    receive_empty_subdirs(sock)
-    receive_files(sock)
-    return path
+    new_path = path
+    i = 1
+    while os.path.isdir(new_path):
+        new_path = path + "_" + str(i)
+        i = i + 1
+    os.mkdir(new_path)
+    receive_empty_subdirs(sock, path, new_path)
+    receive_files(sock, path, new_path)
+    return new_path
 
 
 def send_empty_dir(src_path, dest_path, sock):
