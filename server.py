@@ -93,7 +93,6 @@ def main():
                 clear_computer(updates_dictionary, id,
                                client_num, path)
         sock.close()
-        print('Client disconnected')
 
 
 if __name__ == '__main__':

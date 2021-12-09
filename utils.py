@@ -19,7 +19,6 @@ class Handler(watchdog.events.PatternMatchingEventHandler):
         self.addFileList = list()
 
     def on_created(self, event):
-        print(f"File was created at {event.src_path}")
         if os.path.isfile(event.src_path):
             if event.src_path not in self.addFileList:
                 self.addFileList.append(event.src_path)
@@ -29,7 +28,6 @@ class Handler(watchdog.events.PatternMatchingEventHandler):
                 self.addDirList.append(event.src_path)
 
     def on_deleted(self, event):
-        print(f"File was deleted at {event.src_path}")
         if not event.is_directory:
             if event.src_path not in self.deleteFileList:
                 self.deleteFileList.append(event.src_path)
@@ -39,7 +37,6 @@ class Handler(watchdog.events.PatternMatchingEventHandler):
                 self.deleteDirList.append(event.src_path)
 
     def on_moved(self, event):
-        print(f"File was deleted at {event.src_path} to {event.dest_path}")
         if os.path.isfile(event.dest_path):
             if event.src_path not in self.deleteFileList:
                 self.add_to_list(3, event.src_path)
@@ -52,7 +49,6 @@ class Handler(watchdog.events.PatternMatchingEventHandler):
 
     def on_modified(self, event):
         if event.src_path not in self.deleteFileList and os.path.isfile(event.src_path):
-            print(f"File was modified at {event.src_path}")
             self.add_to_list(1, event.src_path)
             self.add_to_list(3, event.src_path)
 
@@ -125,10 +121,10 @@ def receive_path(sock):
 def send_file(source_path, dest_path, sock):
     if os.path.isfile(source_path):
         send_path(dest_path, sock)
-        f = open(source_path, 'r')
+        f = open(source_path, 'rb')
         l = f.read(1024)
         while l:
-            send(sock, l.encode('utf-8'))
+            send(sock, l)
             l = f.read(1024)
         send(sock, "end".encode('utf-8'))
         f.close()
@@ -141,11 +137,11 @@ def receive_file(sock, old_path="", new_path=""):
     if old_path != "":
         path = path.replace(old_path, new_path, 1)
     if os.path.isdir(path.rsplit(os.path.sep, 1)[0]):
-        f = open(path, 'w')
-        l = read(sock).decode('utf-8')
-        while l != "end":
+        f = open(path, 'wb')
+        l = read(sock)
+        while l != "end".encode():
             f.write(l)
-            l = read(sock).decode('utf-8')
+            l = read(sock)
         f.close()
     return 0
 
@@ -358,11 +354,11 @@ def receive_file_server(sock, id, client_num, update_client_users_dict):
     if path == "finish" or path == "end files":
         return -1
     if os.path.isdir(path.rsplit(os.path.sep, 1)[0]):
-        f = open(path, 'w')
-        l = read(sock).decode('utf-8')
-        while l != "end":
+        f = open(path, 'wb')
+        l = read(sock)
+        while l != "end".encode():
             f.write(l)
-            l = read(sock).decode('utf-8')
+            l = read(sock)
         f.close()
         for key in update_client_users_dict[id].keys():
             if key != client_num:
@@ -415,11 +411,3 @@ def fix_add_dir_list(add_dir_list):
             if str(add_dir_list[j]) in str(add_dir_list[i]):
                 add_dir_list[i], add_dir_list[j] = add_dir_list[j], add_dir_list[i]
     return add_dir_list
-
-
-if __name__ == "__main__":
-    event_handler = Handler()
-    observer = watchdog.observers.Observer()
-    observer.schedule(event_handler, r'C:\Users\ronen\documents', recursive=True)
-    observer.start()
-    observer.join()
